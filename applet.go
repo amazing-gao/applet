@@ -1,9 +1,9 @@
 package applet
 
 import (
-	"github.com/BiteBit/applet/src/api"
-	"github.com/BiteBit/applet/src/crypto"
-	"github.com/BiteBit/applet/src/message"
+	"github.com/BiteBit/applet/api"
+	"github.com/BiteBit/applet/crypto"
+	"github.com/BiteBit/applet/message"
 )
 
 type (

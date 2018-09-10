@@ -122,7 +122,8 @@ func (api *WechatAPI) GetToken() string {
 		return token
 	}
 
-	api.RenewToken()
+	resp, err := api.RenewToken()
+	fmt.Println("RenewToken", err, resp)
 
 	return api.apiToken
 }

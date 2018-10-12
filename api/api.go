@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/parnurzeal/gorequest"
@@ -16,6 +17,7 @@ type (
 		appKey           string
 		apiScheme        string
 		apiDomain        string
+		apiBasePath      string
 		apiToken         string
 		apiTokenExpireIn int
 		apiTokenExpireAt time.Time
@@ -55,10 +57,21 @@ func NewWechatAPI(appID, appKey string, tokenStore WechatTokenStore) *WechatAPI 
 	return &WechatAPI{
 		apiScheme:     "https",
 		apiDomain:     "api.weixin.qq.com",
+		apiBasePath:   "/",
 		appID:         appID,
 		appKey:        appKey,
 		apiTokenStore: tokenStore,
 	}
+}
+
+// SetDomain 设置domain，覆盖默认的api.weixin.qq.com
+func (api *WechatAPI) SetDomain(domain string) {
+	api.apiDomain = domain
+}
+
+// SetBasePath 设置请求的BasePath，覆盖默认的/
+func (api *WechatAPI) SetBasePath(basePath string) {
+	api.apiBasePath = basePath
 }
 
 // Request 请求
@@ -68,7 +81,7 @@ func (api *WechatAPI) Request(opt *option) (*WechatResp, []error) {
 	u := &url.URL{
 		Scheme: api.apiScheme,
 		Host:   api.apiDomain,
-		Path:   opt.url,
+		Path:   path.Join(api.apiBasePath, opt.url),
 	}
 
 	if opt.method == "GET" {

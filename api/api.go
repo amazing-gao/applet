@@ -22,26 +22,21 @@ type (
 		apiTokenExpireIn int
 		apiTokenExpireAt time.Time
 		apiTokenStore    WechatTokenStore
-	}
-
-	// WechatTokenStore 微信token存储器
-	WechatTokenStore interface {
-		Get() (token string, exipresIn int, expireAt time.Time)
-		Set(token string, exipresIn int, expireAt time.Time)
+		before           Before
+		after            After
 	}
 
 	// WechatResp 微信接口响应
 	WechatResp struct {
 		ErrCode int    `json:"errcode"`
 		ErrMsg  string `json:"errmsg"`
-		Data    []byte
 	}
 
-	// WechatRespToken 微信token响应结果
-	WechatRespToken struct {
-		Token     string `json:"access_token"`
-		ExpiresIn int    `json:"expires_in"`
-	}
+	// Before request
+	Before func(*gorequest.SuperAgent)
+
+	// After request
+	After func(*gorequest.SuperAgent, []error, string, *gorequest.Response)
 
 	option struct {
 		method    string
@@ -64,6 +59,16 @@ func NewWechatAPI(appID, appKey string, tokenStore WechatTokenStore) *WechatAPI 
 	}
 }
 
+// SetBefore 设置请求前hook
+func (api *WechatAPI) SetBefore(be Before) {
+	api.before = be
+}
+
+// SetAftre 设置请求后hook
+func (api *WechatAPI) SetAftre(af After) {
+	api.after = af
+}
+
 // SetDomain 设置domain，覆盖默认的api.weixin.qq.com
 func (api *WechatAPI) SetDomain(domain string) {
 	api.apiDomain = domain
@@ -75,7 +80,7 @@ func (api *WechatAPI) SetBasePath(basePath string) {
 }
 
 // Request 请求
-func (api *WechatAPI) Request(opt *option) (*WechatResp, []error) {
+func (api *WechatAPI) Request(opt *option, respData ...interface{}) (*WechatResp, []error) {
 	req := gorequest.New()
 
 	u := &url.URL{
@@ -96,7 +101,15 @@ func (api *WechatAPI) Request(opt *option) (*WechatResp, []error) {
 		req.Query(fmt.Sprintf("access_token=%s", api.GetToken()))
 	}
 
-	_, body, errs := req.End()
+	if api.before != nil {
+		api.before(req)
+	}
+
+	resp, body, errs := req.End()
+
+	if api.after != nil {
+		api.after(req, errs, body, &resp)
+	}
 
 	if len(errs) != 0 {
 		return nil, errs
@@ -112,75 +125,12 @@ func (api *WechatAPI) Request(opt *option) (*WechatResp, []error) {
 		return wechatResp, nil
 	}
 
-	// 业务成功
-	wechatResp.Data = []byte(body)
-	return wechatResp, nil
-}
-
-// GetToken 获取token
-// 优先 内存获取
-// 再次 store获取
-// 再次 生成并保存
-func (api *WechatAPI) GetToken() string {
-	if api.IsValid() {
-		return api.apiToken
-	}
-
-	token, exipresIn, expireAt := api.apiTokenStore.Get()
-	if isValid(token, expireAt) {
-		api.apiToken = token
-		api.apiTokenExpireIn = exipresIn
-		api.apiTokenExpireAt = expireAt
-
-		return token
-	}
-
-	resp, err := api.RenewToken()
-	fmt.Println("RenewToken", err, resp)
-
-	return api.apiToken
-}
-
-// RenewToken 重新生成一个token
-func (api *WechatAPI) RenewToken() (*WechatResp, []error) {
-	query := map[string]string{}
-	query["grant_type"] = "client_credential"
-	query["appid"] = api.appID
-	query["secret"] = api.appKey
-
-	resp, errs := api.Request(&option{
-		method:    "GET",
-		url:       "/cgi-bin/token",
-		withToken: false,
-		query:     query,
-	})
-
-	// 请求成功，解析内容
-	if resp.ErrCode == 0 {
-		respToken := &WechatRespToken{}
-
-		err := json.Unmarshal(resp.Data, respToken)
-		if err != nil {
-			return resp, []error{err}
+	// 业务成功，获取返回的数据
+	if len(respData) != 0 {
+		if err := json.Unmarshal([]byte(body), respData[0]); err != nil {
+			return wechatResp, []error{err}
 		}
-
-		api.apiToken = respToken.Token
-		api.apiTokenExpireIn = respToken.ExpiresIn
-		api.apiTokenExpireAt = time.Now().Add(time.Second * time.Duration(respToken.ExpiresIn-30)) // 提前30秒失效token
-
-		// 保存新的token
-		api.apiTokenStore.Set(api.apiToken, api.apiTokenExpireIn, api.apiTokenExpireAt)
 	}
 
-	return resp, errs
-}
-
-// IsValid 返回当前的token是否过期
-// token值存在并且没有到达有效期
-func (api *WechatAPI) IsValid() bool {
-	return isValid(api.apiToken, api.apiTokenExpireAt)
-}
-
-func isValid(apiToken string, apiTokenExpireAt time.Time) bool {
-	return (apiToken != "" && apiTokenExpireAt.After(time.Now()))
+	return wechatResp, nil
 }

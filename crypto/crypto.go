@@ -5,22 +5,42 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 )
 
-// WechatCrypto 微信加密
-// examples:
-// wcp := wcrypto.New("your open appid", "your token", "your aes key")
-// wcp.Encrypt("your messge")
-// wcp.Decrypt("messge from wechat")
-type WechatCrypto struct {
-	appID          []byte
-	token          string
-	encodingAESKey []byte
-	iv             []byte
-}
+type (
+	// WechatCrypto 微信加密
+	// examples:
+	// wcp := wcrypto.New("your open appid", "your token", "your aes key")
+	// wcp.Encrypt("your messge")
+	// wcp.Decrypt("messge from wechat")
+	WechatCrypto struct {
+		appID          []byte
+		token          string
+		encodingAESKey []byte
+		iv             []byte
+	}
+
+	// UserInfo 用户信息
+	UserInfo struct {
+		OpenID    string `json:"openId"`
+		NickName  string `json:"nickName"`
+		Gender    int    `json:"gender"`
+		City      string `json:"city"`
+		Province  string `json:"province"`
+		Country   string `json:"country"`
+		AvatarURL string `json:"avatarUrl"`
+		UnionID   string `json:"unionId"`
+		Watermark struct {
+			AppID     string `json:"appid"`
+			Timestamp int    `json:"timestamp"`
+		} `json:"watermark"`
+	}
+)
 
 // NewWechatCrypto 新建一个微信加密、解密工具
 func NewWechatCrypto(appID, token, encodingAESKey string) *WechatCrypto {
@@ -80,4 +100,46 @@ func (wc *WechatCrypto) CheckSignature(timestamp, nonce, signature string) bool 
 // CheckMsgSignature 开发者计算签名
 func (wc *WechatCrypto) CheckMsgSignature(timestamp, nonce, msgEncrypt, signature string) bool {
 	return checkSignature([]string{timestamp, nonce, msgEncrypt}, wc.token, signature)
+}
+
+// DecryptUserInfo 解密用户信息
+func (wc *WechatCrypto) DecryptUserInfo(sessionKey, encryptedData, rawData, iv, signature string) (user *UserInfo, err error) {
+	user = &UserInfo{}
+	err = nil
+
+	// 校验数据是否合法
+	if fmt.Sprintf("%x", sha1.Sum([]byte(rawData+sessionKey))) != signature {
+		return
+	}
+
+	sessionKeyBase64, err := base64.StdEncoding.DecodeString(sessionKey)
+	if err != nil {
+		return
+	}
+
+	encryptedDataBase64, err := base64.StdEncoding.DecodeString(encryptedData)
+	if err != nil {
+		return
+	}
+
+	ivBase64, err := base64.StdEncoding.DecodeString(iv)
+	if err != nil {
+		return
+	}
+
+	block, err := aes.NewCipher([]byte(sessionKeyBase64))
+	if err != nil {
+		return
+	}
+
+	dst := make([]byte, len(encryptedDataBase64))
+	decrypter := cipher.NewCBCDecrypter(block, ivBase64)
+	decrypter.CryptBlocks(dst, encryptedDataBase64)
+
+	err = json.Unmarshal(pkcs7UnPadding(dst), user)
+	if err != nil {
+		return
+	}
+
+	return
 }

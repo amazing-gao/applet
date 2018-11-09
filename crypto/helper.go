@@ -35,3 +35,9 @@ func decode(text []byte) []byte {
 	}
 	return text[0 : len(text)-pad]
 }
+
+func pkcs7UnPadding(origData []byte) []byte {
+	length := len(origData)
+	unpadding := int(origData[length-1])
+	return origData[:(length - unpadding)]
+}

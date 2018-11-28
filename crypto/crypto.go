@@ -109,6 +109,7 @@ func (wc *WechatCrypto) DecryptUserInfo(sessionKey, encryptedData, rawData, iv, 
 
 	// 校验数据是否合法
 	if fmt.Sprintf("%x", sha1.Sum([]byte(rawData+sessionKey))) != signature {
+		err = fmt.Errorf("%s", "invalid data")
 		return
 	}
 

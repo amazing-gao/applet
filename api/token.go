@@ -1,7 +1,7 @@
 package api
 
 import (
-	"fmt"
+	"log"
 	"time"
 )
 
@@ -38,7 +38,7 @@ func (api *WechatAPI) GetToken() string {
 	}
 
 	resp, err := api.RenewToken()
-	fmt.Println("RenewToken", err, resp)
+	log.Println("RenewToken", err, resp)
 
 	return api.apiToken
 }

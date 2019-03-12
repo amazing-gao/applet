@@ -44,8 +44,6 @@ type (
 
 // NewWechatCrypto 新建一个微信加密、解密工具
 func NewWechatCrypto(appID, token, encodingAESKey string) *WechatCrypto {
-	fmt.Println("Applet.NewWechatCrypto", token, encodingAESKey, appID)
-
 	r, _ := base64.StdEncoding.DecodeString(encodingAESKey + "=")
 	return &WechatCrypto{
 		token:          token,

@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/BiteBit/applet/crypto"
@@ -35,10 +36,12 @@ type (
 		ThumbMediaID string   `json:"ThumbMediaId" xml:"ThumbMediaId"` // miniprogrampage: 封面图片的临时素材id
 		Event        string   `json:"Event" xml:"Event"`               // event: 事件类型，user_enter_tempsession
 		SessionFrom  string   `json:"SessionFrom" xml:"SessionFrom"`   // event: 开发者在客服会话按钮设置的session-from属性
+		Query        string   `json:"Query" xml:"Query"`               // 搜索内容
+		Scene        int      `json:"Scene" xml:"Scene"`               // 场景值
 	}
 
 	// Handler 小程序消息推送处理器
-	Handler func(*Message, error)
+	Handler func(*Message, error) string
 )
 
 // NewWechatMessager 新建一个微信消息信使
@@ -97,6 +100,7 @@ func (mgr *WechatMessenger) MessageHandle(request *http.Request, writer http.Res
 	msgSignature := querys.Get("msg_signature")
 
 	var err error
+	var ret string
 	for index := 0; index < 1; index++ {
 		msg := &Message{}
 
@@ -129,14 +133,17 @@ func (mgr *WechatMessenger) MessageHandle(request *http.Request, writer http.Res
 		}
 
 		// 处理消息
-		mgr.messageHandler(msg, err)
+		ret = mgr.messageHandler(msg, err)
 	}
 
 	if err != nil {
-		writer.Write([]byte(err.Error()))
-	} else {
-		writer.Write([]byte("success"))
+		log.Println("Applet.MessageHandle.Error", err)
+		ret = err.Error()
+	} else if len(ret) == 0 {
+		ret = "success"
 	}
+
+	writer.Write([]byte(ret))
 }
 
 // MessageHandleNotSupport 不支持的消息

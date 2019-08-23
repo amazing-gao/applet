@@ -32,6 +32,7 @@ func (api *WechatAPI) GetToken() string {
 // RenewToken 重新生成一个token
 func (api *WechatAPI) RenewToken() (*WechatResp, []error) {
 	defer api.locker.Unlock()
+	api.locker.Lock()
 
 	respToken := &WechatRespToken{}
 	resp, errs := api.Request(&option{
@@ -54,8 +55,6 @@ func (api *WechatAPI) RenewToken() (*WechatResp, []error) {
 		// 保存新的token
 		api.apiTokenStore.Set(apiToken, apiTokenExpireIn, apiTokenExpireAt)
 	}
-
-	api.locker.Lock()
 
 	return resp, errs
 }

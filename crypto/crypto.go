@@ -142,3 +142,8 @@ func (wc *WechatCrypto) DecryptUserInfo(sessionKey, encryptedData, rawData, iv, 
 
 	return
 }
+
+// CalcMsgSignature 计算消息签名
+func (wc *WechatCrypto) CalcMsgSignature(timestamp, nonce, msgEncrypt string) string {
+	return CalcSignature([]string{timestamp, nonce, msgEncrypt, wc.token}...)
+}

@@ -8,13 +8,18 @@ import (
 	"strings"
 )
 
-func checkSignature(inputs []string, token, signature string) bool {
-	array := append(inputs, token)
-	sort.Strings(array)
-	rawMsg := strings.Join(array, "")
+// CalcSignature 计算消息的签名
+func CalcSignature(inputs ...string) string {
+	sort.Strings(inputs)
+	rawMsg := strings.Join(inputs, "")
 	bytes := sha1.Sum([]byte(rawMsg))
 
-	return fmt.Sprintf("%x", bytes) == signature
+	return fmt.Sprintf("%x", bytes)
+}
+
+func checkSignature(inputs []string, token, signature string) bool {
+	arr := append(inputs, token)
+	return CalcSignature(arr...) == signature
 }
 
 func encode(text []byte) []byte {

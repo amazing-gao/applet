@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
-	"time"
+	"sync"
 
 	"github.com/parnurzeal/gorequest"
 )
@@ -13,17 +13,15 @@ import (
 type (
 	// WechatAPI 小程序API
 	WechatAPI struct {
-		appID            string
-		appKey           string
-		apiScheme        string
-		apiDomain        string
-		apiBasePath      string
-		apiToken         string
-		apiTokenExpireIn int
-		apiTokenExpireAt time.Time
-		apiTokenStore    WechatTokenStore
-		before           Before
-		after            After
+		appID         string
+		appKey        string
+		apiScheme     string
+		apiDomain     string
+		apiBasePath   string
+		apiTokenStore WechatTokenStore
+		before        Before
+		after         After
+		locker        *sync.Mutex
 	}
 
 	// WechatResp 微信接口响应
@@ -56,6 +54,7 @@ func NewWechatAPI(appID, appKey string, tokenStore WechatTokenStore) *WechatAPI 
 		appID:         appID,
 		appKey:        appKey,
 		apiTokenStore: tokenStore,
+		locker:        &sync.Mutex{},
 	}
 }
 

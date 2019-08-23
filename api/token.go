@@ -24,27 +24,15 @@ type (
 // 再次 store获取
 // 再次 生成并保存
 func (api *WechatAPI) GetToken() string {
-	if api.IsValid() {
-		return api.apiToken
-	}
-
 	token, exipresIn, expireAt := api.apiTokenStore.Get()
-	if isValid(token, expireAt) {
-		api.apiToken = token
-		api.apiTokenExpireIn = exipresIn
-		api.apiTokenExpireAt = expireAt
-
-		return token
-	}
-
-	resp, err := api.RenewToken()
-	log.Println("RenewToken", err, resp)
-
-	return api.apiToken
+	log.Printf("Applet.GetToken appID:%s exipresIn:%d expireAt:%s", api.appID, exipresIn, expireAt)
+	return token
 }
 
 // RenewToken 重新生成一个token
 func (api *WechatAPI) RenewToken() (*WechatResp, []error) {
+	defer api.locker.Unlock()
+
 	respToken := &WechatRespToken{}
 	resp, errs := api.Request(&option{
 		method:    "GET",
@@ -59,23 +47,15 @@ func (api *WechatAPI) RenewToken() (*WechatResp, []error) {
 
 	// 请求成功，解析内容
 	if resp.ErrCode == 0 {
-		api.apiToken = respToken.Token
-		api.apiTokenExpireIn = respToken.ExpiresIn
-		api.apiTokenExpireAt = time.Now().Add(time.Second * time.Duration(respToken.ExpiresIn-30)) // 提前30秒失效token
+		apiToken := respToken.Token
+		apiTokenExpireIn := respToken.ExpiresIn
+		apiTokenExpireAt := time.Now().Add(time.Second * time.Duration(respToken.ExpiresIn-30)) // 提前30秒失效token
 
 		// 保存新的token
-		api.apiTokenStore.Set(api.apiToken, api.apiTokenExpireIn, api.apiTokenExpireAt)
+		api.apiTokenStore.Set(apiToken, apiTokenExpireIn, apiTokenExpireAt)
 	}
 
+	api.locker.Lock()
+
 	return resp, errs
-}
-
-// IsValid 返回当前的token是否过期
-// token值存在并且没有到达有效期
-func (api *WechatAPI) IsValid() bool {
-	return isValid(api.apiToken, api.apiTokenExpireAt)
-}
-
-func isValid(apiToken string, apiTokenExpireAt time.Time) bool {
-	return (apiToken != "" && apiTokenExpireAt.After(time.Now()))
 }

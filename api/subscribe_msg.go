@@ -6,6 +6,8 @@ type (
 		Touser     string      `json:"touser"`
 		TemplateID string      `json:"template_id"`
 		Page       string      `json:"page"`
+		MpSate     string      `json:"miniprogram_state"`
+		Lang       string      `json:"lang"`
 		Data       interface{} `json:"data"`
 	}
 )

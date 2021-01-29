@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/BiteBit/applet/crypto"
+	"github.com/amazing-gao/applet/crypto"
 )
 
 type (

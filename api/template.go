@@ -17,7 +17,7 @@ type (
 func (api *WechatAPI) GetTemplateList(offset, count uint) (RespTemplateList, *WechatResp, []error) {
 	respData := RespTemplateList{}
 	resp, errs := api.Request(&option{
-		method:    "GET",
+		method:    "POST",
 		url:       "/cgi-bin/wxopen/template/list",
 		withToken: true,
 		query: map[string]uint{

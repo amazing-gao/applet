@@ -68,6 +68,11 @@ func (api *WechatAPI) SetAftre(af After) {
 	api.after = af
 }
 
+// SetScheme 设置http/https schema，覆盖默认的https
+func (api *WechatAPI) SetScheme(scheme string) {
+	api.apiScheme = scheme
+}
+
 // SetDomain 设置domain，覆盖默认的api.weixin.qq.com
 func (api *WechatAPI) SetDomain(domain string) {
 	api.apiDomain = domain
